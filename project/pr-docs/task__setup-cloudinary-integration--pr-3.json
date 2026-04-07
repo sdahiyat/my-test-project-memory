@@ -1,0 +1,57 @@
+{
+  "overview": "This PR wires up a full Cloudinary integration: SDK configuration with env-var validation, signed upload URL generation, responsive image transformations, and a webhook handler for upload-completion callbacks. Two Next.js API routes are added (sign-upload and webhook) along with a client-side React hook for tracked uploads. Shared TypeScript types are centralized under types/cloudinary.ts.",
+  "summary_json": {
+    "New API routes": "POST /api/cloudinary/sign-upload, POST /api/cloudinary/webhook",
+    "Required env vars": "CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET",
+    "Max upload size": "50 MB",
+    "Supported formats": "image/jpeg, image/png, image/webp, image/heic",
+    "Responsive sizes (eager)": "thumbnail 200×200, small 400w, medium 800w, large 1600w, original",
+    "Webhook auth": "HMAC-SHA1 via x-cld-timestamp + x-cld-signature headers, timing-safe compare",
+    "Auth guard": "sign-upload route requires active Supabase session",
+    "Runtime": "nodejs (both API routes)"
+  },
+  "files_changed": [
+    {
+      "path": "lib/cloudinary/config.ts",
+      "summary": "Initializes Cloudinary SDK with env-var validation at startup and exports CloudinaryUploadResult interface."
+    },
+    {
+      "path": "lib/cloudinary/transformations.ts",
+      "summary": "Defines PHOTO_TRANSFORMATIONS (5 sizes) and AVATAR_TRANSFORMATIONS (3 face-crop sizes) plus URL builder helpers."
+    },
+    {
+      "path": "lib/cloudinary/upload.ts",
+      "summary": "Generates server-side signed upload params with eager transformations, folder, userId tag, and HMAC signature."
+    },
+    {
+      "path": "lib/cloudinary/webhook.ts",
+      "summary": "Validates Cloudinary webhook HMAC signature and extracts EXIF metadata from the payload."
+    },
+    {
+      "path": "lib/cloudinary/index.ts",
+      "summary": "Barrel export re-exporting all Cloudinary utilities and types for clean imports."
+    },
+    {
+      "path": "types/cloudinary.ts",
+      "summary": "Centralized TypeScript interfaces: SignedUploadParams, CloudinaryUploadResult, ExtractedEXIF, ResponsiveImageUrls."
+    },
+    {
+      "path": "app/api/cloudinary/sign-upload/route.ts",
+      "summary": "Next.js POST route that requires auth, then returns signed upload params for direct client-to-Cloudinary uploads."
+    },
+    {
+      "path": "app/api/cloudinary/webhook/route.ts",
+      "summary": "Next.js POST route that validates Cloudinary webhook signature, extracts EXIF, and persists responsive URLs via Supabase."
+    },
+    {
+      "path": "hooks/useCloudinaryUpload.ts",
+      "summary": "Client React hook wrapping XHR upload with progress tracking, retry logic, and error/reset state."
+    },
+    {
+      "path": ".env.local",
+      "summary": "Template updated to include Cloudinary env var placeholders alongside existing Supabase vars."
+    }
+  ],
+  "extras": "Verify: set the three CLOUDINARY_* env vars in .env.local; hit POST /api/cloudinary/sign-upload with a valid session to confirm signature generation; send a test webhook with correct HMAC headers to /api/cloudinary/webhook. Risk: .env.local should never be committed — confirm it is in .gitignore. cap_note: files beyond index 10 were omitted; review any additional files manually.",
+  "fallback_text": "PR #3 adds a complete Cloudinary integration to the Next.js app. lib/cloudinary/config.ts bootstraps the SDK and throws at startup if CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, or CLOUDINARY_API_SECRET are missing. lib/cloudinary/transformations.ts defines five photo sizes (thumbnail through original) and three face-cropped avatar sizes. lib/cloudinary/upload.ts generates HMAC-signed upload params with eager transformations so all responsive sizes are created on upload. lib/cloudinary/webhook.ts validates incoming Cloudinary callbacks using timing-safe HMAC-SHA1 and parses EXIF data. Two API routes are added: POST /api/cloudinary/sign-upload (Supabase-auth-gated) and POST /api/cloudinary/webhook (HMAC-validated, writes to Supabase). A client hook useCloudinaryUpload.ts handles XHR progress reporting and retry. Shared types live in types/cloudinary.ts and everything is re-exported via lib/cloudinary/index.ts."
+}
